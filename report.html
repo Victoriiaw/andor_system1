@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>📊 Отчет по нарушениям СНиП</h2>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                📈 Статистика по категориям
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <thead>
+                        <tr><th>Категория</th><th>Всего</th><th>Открыто</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for s in stats %}
+                        <tr>
+                            <td>{{ s.category }}</td>
+                            <td>{{ s.count }}</td>
+                            <td class="text-danger">{{ s.open_count }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <hr>
+                <p><strong>Всего дефектов:</strong> {{ total }}</p>
+                <p><strong>Закрыто:</strong> {{ closed }} ({{ (closed / total * 100)|round(1) if total > 0 else 0 }}%)</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                🔥 ТОП-5 частых нарушений
+            </div>
+            <div class="card-body">
+                {% if top_defects %}
+                    <ol>
+                    {% for td in top_defects %}
+                        <li>
+                            <strong>{{ td.code }}</strong><br>
+                            <span class="small">{{ td.description[:80] }}</span><br>
+                            <span class="badge bg-secondary">Встречается: {{ td.count }} раз</span>
+                        </li>
+                    {% endfor %}
+                    </ol>
+                {% else %}
+                    <p>Нет данных для ТОП-5</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

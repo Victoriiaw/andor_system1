@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>🔧 Заявки на исправление дефектов</h2>
+<p class="text-muted">Здесь отображаются все недочеты, требующие внимания подрядчика</p>
+
+<div class="table-responsive">
+    <table class="table table-bordered table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Квартира</th>
+                <th>📍 Место</th>
+                <th>СНиП</th>
+                <th>Описание</th>
+                <th>Статус</th>
+                <th>Фото</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in defects %}
+            <tr class="{% if d.status == 'open' %}table-danger{% elif d.status == 'fixed' %}table-warning{% endif %}">
+                <td>
+                    №{{ d.flat_number }}<br>
+                    <small>{{ d.building }}</small>
+                </td>
+                <td>
+                    {% if d.room %}
+                        <strong>{{ d.room }}</strong>
+                        {% if d.location_detail %}
+                            <br><small class="text-muted">{{ d.location_detail }}</small>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <strong>{{ d.code }}</strong><br>
+                    <span class="small text-muted">{{ d.category }}</span>
+                </td>
+                <td>
+                    {{ d.description[:80] }}
+                    {% if d.comment %}
+                        <br><span class="badge bg-secondary">📝 {{ d.comment[:40] }}</span>
+                    {% endif %}
+                 </td>
+                <td>
+                    {% if d.status == 'open' %}
+                        <span class="badge bg-danger">⚠️ Требуется исправление</span>
+                    {% elif d.status == 'fixed' %}
+                        <span class="badge bg-warning">🔄 Ожидает проверки</span>
+                    {% else %}
+                        <span class="badge bg-success">✅ Закрыт</span>
+                    {% endif %}
+                 </td>
+                <td>
+                    {% if d.photo_path %}
+                        <a href="/{{ d.photo_path }}" target="_blank" class="btn btn-sm btn-outline-info">📷 Фото</a>
+                    {% else %}
+                        —
+                    {% endif %}
+                 </td>
+                <td>
+                    {% if d.status == 'open' %}
+                        <a href="/defect/{{ d.id }}/fix" class="btn btn-sm btn-success">✅ Исправил</a>
+                    {% elif d.status == 'fixed' %}
+                        <div class="btn-group btn-group-sm">
+                            <a href="/defect/{{ d.id }}/close" class="btn btn-primary">✓ Принять</a>
+                            <a href="/defect/{{ d.id }}/reopen" class="btn btn-danger">↺ На доработку</a>
+                        </div>
+                    {% endif %}
+                    <a href="/generate_act/{{ d.id }}" class="btn btn-sm btn-secondary mt-1">📄 Акт</a>
+                 </td>
+             </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if defects|length == 0 %}
+    <div class="alert alert-success">🎉 Все дефекты исправлены! Отличная работа!</div>
+{% endif %}
+{% endblock %}

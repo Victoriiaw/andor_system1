@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>🏠 Квартира №{{ flat.number }} - {{ flat.building }}</h2>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-danger text-white">
+                ➕ Добавить недочет по СНиП
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/add_defect" enctype="multipart/form-data">
+                    <input type="hidden" name="flat_id" value="{{ flat.id }}">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">📋 Выберите нарушение СНиП:</label>
+                        <select name="snip_defect_id" class="form-select" required>
+                            <option value="">-- Выберите --</option>
+                            {% for defect in snip_defects %}
+                            <option value="{{ defect.id }}">
+                                [{{ defect.code }}] {{ defect.category }}: {{ defect.description[:60] }}
+                                {% if defect.severity == 'critical' %}⚠️ КРИТИЧНО{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">📍 Комната / помещение:</label>
+                            <select name="room" class="form-select" required>
+                                <option value="">-- Выберите --</option>
+                                <option value="прихожая">🚪 Прихожая</option>
+                                <option value="гостиная">🛋️ Гостиная</option>
+                                <option value="спальня 1">🛏️ Спальня 1</option>
+                                <option value="спальня 2">🛏️ Спальня 2</option>
+                                <option value="кухня">🍳 Кухня</option>
+                                <option value="санузел 1">🚽 Санузел 1</option>
+                                <option value="санузел 2">🚿 Санузел 2</option>
+                                <option value="балкон">🌞 Балкон/лоджия</option>
+                                <option value="коридор">📏 Коридор</option>
+                                <option value="кладовая">📦 Кладовая</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">📍 Точное расположение:</label>
+                            <input type="text" name="location_detail" class="form-control" placeholder="левая стена, верхний угол, около розетки...">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">📝 Дополнительный комментарий:</label>
+                        <input type="text" name="comment" class="form-control" placeholder="Например: требуется срочное исправление">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">📸 Фото дефекта:</label>
+                        <input type="file" name="photo" class="form-control" accept="image/*" capture="environment">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-danger w-100">✅ Добавить недочет</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                📋 Выявленные недочеты в этой квартире
+            </div>
+            <div class="card-body" style="max-height: 500px; overflow-y: auto;">
+                {% if defects %}
+                    {% for d in defects %}
+                    <div class="border-bottom mb-3 pb-2">
+                        <div class="d-flex justify-content-between">
+                            <strong class="{% if d.severity == 'critical' %}critical{% endif %}">
+                                {{ d.code }} - {{ d.category }}
+                            </strong>
+                            <span class="badge {% if d.status == 'open' %}bg-danger{% elif d.status == 'fixed' %}bg-warning{% else %}bg-success{% endif %}">
+                                {{ {'open':'Открыт','fixed':'Исправлен','closed':'Закрыт'}[d.status] }}
+                            </span>
+                        </div>
+                        <p class="small mt-1">{{ d.description }}</p>
+                        {% if d.room %}
+                            <p class="small text-primary">📍 {{ d.room }}{% if d.location_detail %} ({{ d.location_detail }}){% endif %}</p>
+                        {% endif %}
+                        {% if d.comment %}<p class="small text-muted">📝 {{ d.comment }}</p>{% endif %}
+                        {% if d.photo_path %}
+                            <a href="/{{ d.photo_path }}" target="_blank">
+                                <img src="/{{ d.photo_path }}" class="photo-thumb">
+                            </a>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-success">✅ Недочетов нет. Квартира готова к передаче!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
