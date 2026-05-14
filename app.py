@@ -10,6 +10,26 @@ import uuid
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import shutil
+import time
+
+def backup_database():
+    """Создаёт резервную копию базы данных с временной меткой"""
+    try:
+        if os.path.exists(DB_PATH):
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_dir = 'backups'
+            os.makedirs(backup_dir, exist_ok=True)
+            backup_path = os.path.join(backup_dir, f'database_backup_{timestamp}.sqlite')
+            shutil.copy2(DB_PATH, backup_path)
+            print(f"✅ Бэкап создан: {backup_path}")
+            
+            # Оставляем только последние 10 бэкапов
+            backups = sorted([f for f in os.listdir(backup_dir) if f.startswith('database_backup_')])
+            for old_backup in backups[:-10]:
+                os.remove(os.path.join(backup_dir, old_backup))
+    except Exception as e:
+        print(f"❌ Ошибка бэкапа: {e}")
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
