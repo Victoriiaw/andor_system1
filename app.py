@@ -57,13 +57,13 @@ def send_email_notification(flat_number, room, location_detail, defect_code, def
 📍 Помещение: {room if room else 'не указано'}
 📌 Точное место: {location_detail if location_detail else 'не указано'}
 
-Yормативный документ: {defect_code}
-- Описание дефекта: {defect_description}
+📄 Нормативный документ: {defect_code}
+📝 Описание дефекта: {defect_description}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Для просмотра всех заявок и управления перейдите по ссылке:
- http://127.0.0.1:5000/defects
+👉 http://127.0.0.1:5000/defects
 
 {chr(10)}Если вы работаете с телефона в той же сети, используйте IP-адрес компьютера.
 
@@ -199,6 +199,30 @@ def reopen_defect(defect_id):
     conn.commit()
     conn.close()
     return redirect(url_for('defects'))
+
+# ========== НОВАЯ ФУНКЦИЯ УДАЛЕНИЯ ДЕФЕКТА ==========
+@app.route('/defect/<int:defect_id>/delete')
+def delete_defect(defect_id):
+    conn = get_db()
+    
+    # Сначала получаем путь к фото, чтобы удалить файл
+    defect = conn.execute('SELECT photo_path FROM defects WHERE id = ?', (defect_id,)).fetchone()
+    
+    # Удаляем фото с диска, если оно есть
+    if defect and defect['photo_path']:
+        try:
+            if os.path.exists(defect['photo_path']):
+                os.remove(defect['photo_path'])
+        except:
+            pass  # Файла нет или ошибка — игнорируем
+    
+    # Удаляем запись из базы данных
+    conn.execute('DELETE FROM defects WHERE id = ?', (defect_id,))
+    conn.commit()
+    conn.close()
+    
+    return redirect(url_for('defects'))
+# ===================================================
 
 @app.route('/generate_act/<int:defect_id>')
 def generate_act(defect_id):
