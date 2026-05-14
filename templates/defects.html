@@ -69,6 +69,7 @@
                         </div>
                     {% endif %}
                     <a href="/generate_act/{{ d.id }}" class="btn btn-sm btn-secondary mt-1">📄 Акт</a>
+                    <a href="/defect/{{ d.id }}/delete" class="btn btn-sm btn-danger mt-1" onclick="return confirm('Удалить этот недочет?')">🗑️ Удалить</a>
                  </td>
              </tr>
             {% endfor %}
