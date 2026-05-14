@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>📋 Список квартир для приемки</h2>
+<div class="row">
+    {% for flat in flats %}
+    <div class="col-md-4 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Квартира №{{ flat.number }}</h5>
+                <p class="card-text">
+                    {{ flat.building }}, подъезд {{ flat.entrance }}, этаж {{ flat.floor }}<br>
+                    <span class="badge bg-warning text-dark">Всего замечаний: {{ flat.defect_count or 0 }}</span>
+                    <span class="badge bg-danger">Не закрыто: {{ flat.open_count or 0 }}</span>
+                </p>
+                <a href="/flat/{{ flat.id }}" class="btn btn-primary">🔍 Осмотреть квартиру</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
