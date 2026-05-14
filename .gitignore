@@ -1,0 +1,5 @@
+database.sqlite
+uploads/
+acts/
+__pycache__/
+*.pyc
