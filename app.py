@@ -173,7 +173,8 @@ def add_defect():
             defect_code=snip_info['code'],
             defect_description=snip_info['description']
         )
-    
+        # Создаём резервную копию БД
+    backup_database()
     return redirect(url_for('flat', flat_id=flat_id))
 
 @app.route('/defects')
