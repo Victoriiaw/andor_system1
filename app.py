@@ -226,6 +226,14 @@ def delete_defect(defect_id):
 
 @app.route('/generate_act/<int:defect_id>')
 def generate_act(defect_id):
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+    import os
+    from datetime import datetime
+    
+    # Регистрируем русский шрифт
     try:
         pdfmetrics.registerFont(TTFont('Arial', 'C:/Windows/Fonts/arial.ttf'))
         font_name = 'Arial'
@@ -234,7 +242,11 @@ def generate_act(defect_id):
             pdfmetrics.registerFont(TTFont('Times', 'C:/Windows/Fonts/times.ttf'))
             font_name = 'Times'
         except:
-            font_name = 'Helvetica'
+            try:
+                pdfmetrics.registerFont(TTFont('DejaVu', 'C:/Windows/Fonts/arial.ttf'))
+                font_name = 'DejaVu'
+            except:
+                font_name = 'Helvetica'
     
     conn = get_db()
     defect = conn.execute('''
@@ -257,6 +269,7 @@ def generate_act(defect_id):
     c = canvas.Canvas(filepath, pagesize=A4)
     width, height = A4
     
+    # ========== ЗАГОЛОВОК ==========
     c.setFont(font_name, 16)
     c.drawString(50, height - 50, "АКТ ОСМОТРА КВАРТИРЫ")
     
@@ -271,6 +284,7 @@ def generate_act(defect_id):
     
     c.line(50, height - 185, width - 50, height - 185)
     
+    # ========== ДЕФЕКТ ==========
     c.setFont(font_name, 14)
     c.drawString(50, height - 215, "ВЫЯВЛЕННЫЙ ДЕФЕКТ")
     
@@ -278,6 +292,7 @@ def generate_act(defect_id):
     c.drawString(50, height - 240, f"Нормативный документ: {defect['code']}")
     c.drawString(50, height - 260, f"Категория: {defect['category']}")
     
+    # Описание (разбиваем на строки, если длинное)
     description = defect['description']
     if len(description) > 70:
         c.drawString(50, height - 280, f"Описание: {description[:70]}...")
@@ -310,14 +325,26 @@ def generate_act(defect_id):
     }.get(defect['status'], defect['status'])
     c.drawString(50, height - y_pos, f"Статус: {status_text}")
     
-    c.line(50, height - 410, 200, height - 410)
-    c.drawString(60, height - 430, "Прораб")
+    # ========== ПОДПИСИ ==========
+    # Три подписи: Прораб, Подрядчик, Покупатель
+    y_sign = 400
     
-    c.line(width - 200, height - 410, width - 50, height - 410)
-    c.drawString(width - 180, height - 430, "Представитель подрядчика")
+    # Линия для Прораба
+    c.line(50, height - y_sign, 200, height - y_sign)
+    c.drawString(60, height - y_sign - 20, "Прораб")
     
+    # Линия для Подрядчика
+    c.line(width - 200, height - y_sign, width - 50, height - y_sign)
+    c.drawString(width - 190, height - y_sign - 20, "Представитель подрядчика")
+    
+    # Линия для Покупателя (посередине, ниже)
+    y_sign2 = y_sign + 60
+    c.line(50, height - y_sign2, width - 50, height - y_sign2)
+    c.drawString(50, height - y_sign2 - 20, "Покупатель (дольщик)")
+    
+    # ========== ДАТА ==========
     c.setFont(font_name, 9)
-    c.drawString(50, height - 480, f"Акт сформирован: {datetime.now().strftime('%d.%m.%Y %H:%M')}")
+    c.drawString(50, height - 500, f"Акт сформирован: {datetime.now().strftime('%d.%m.%Y %H:%M')}")
     
     c.save()
     
