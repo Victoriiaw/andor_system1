@@ -226,28 +226,22 @@ def delete_defect(defect_id):
 
 @app.route('/generate_act/<int:defect_id>')
 def generate_act(defect_id):
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.lib.pagesizes import A4
-    from reportlab.pdfgen import canvas
     import os
     from datetime import datetime
-    
-    # Регистрируем русский шрифт
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    # Регистрируем шрифт из папки проекта
+    font_path = os.path.join(os.path.dirname(__file__), 'ofont.ru_Arial.ttf')
     try:
-        pdfmetrics.registerFont(TTFont('Arial', 'C:/Windows/Fonts/arial.ttf'))
+        pdfmetrics.registerFont(TTFont('Arial', font_path))
         font_name = 'Arial'
-    except:
-        try:
-            pdfmetrics.registerFont(TTFont('Times', 'C:/Windows/Fonts/times.ttf'))
-            font_name = 'Times'
-        except:
-            try:
-                pdfmetrics.registerFont(TTFont('DejaVu', 'C:/Windows/Fonts/arial.ttf'))
-                font_name = 'DejaVu'
-            except:
-                font_name = 'Helvetica'
-    
+    except Exception as e:
+        print(f"Font error: {e}")
+        font_name = 'Helvetica'
+
     conn = get_db()
     defect = conn.execute('''
         SELECT d.*, f.number as flat_number, f.building, f.entrance, f.floor,
@@ -258,47 +252,44 @@ def generate_act(defect_id):
         WHERE d.id = ?
     ''', (defect_id,)).fetchone()
     conn.close()
-    
+
     if not defect:
         return "Дефект не найден", 404
-    
+
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f"act_{defect_id}_{timestamp}.pdf"
     filepath = os.path.join(app.config['ACTS_FOLDER'], filename)
-    
+
     c = canvas.Canvas(filepath, pagesize=A4)
     width, height = A4
-    
-    # ========== ЗАГОЛОВОК ==========
+
     c.setFont(font_name, 16)
     c.drawString(50, height - 50, "АКТ ОСМОТРА КВАРТИРЫ")
-    
+
     c.setFont(font_name, 12)
     c.drawString(50, height - 80, "ООО СЗ «Андор»")
-    
+
     c.setFont(font_name, 11)
     c.drawString(50, height - 105, f"Квартира №{defect['flat_number']}")
     c.drawString(50, height - 125, f"Корпус: {defect['building']}")
     c.drawString(50, height - 145, f"Подъезд: {defect['entrance']}, Этаж: {defect['floor']}")
     c.drawString(50, height - 165, f"Дата осмотра: {defect['created_at']}")
-    
+
     c.line(50, height - 185, width - 50, height - 185)
-    
-    # ========== ДЕФЕКТ ==========
+
     c.setFont(font_name, 14)
     c.drawString(50, height - 215, "ВЫЯВЛЕННЫЙ ДЕФЕКТ")
-    
+
     c.setFont(font_name, 11)
     c.drawString(50, height - 240, f"Нормативный документ: {defect['code']}")
     c.drawString(50, height - 260, f"Категория: {defect['category']}")
-    
-    # Описание (разбиваем на строки, если длинное)
+
     description = defect['description']
     if len(description) > 70:
         c.drawString(50, height - 280, f"Описание: {description[:70]}...")
     else:
         c.drawString(50, height - 280, f"Описание: {description}")
-    
+
     y_pos = 300
     if defect['room']:
         location_text = f"Место: {defect['room']}"
@@ -306,48 +297,42 @@ def generate_act(defect_id):
             location_text += f" ({defect['location_detail']})"
         c.drawString(50, height - y_pos, location_text)
         y_pos += 20
-    
+
     if defect['comment']:
         c.drawString(50, height - y_pos, f"Комментарий: {defect['comment'][:60]}")
         y_pos += 20
-    
+
     severity_text = "КРИТИЧНЫЙ" if defect['severity'] == 'critical' else "КОСМЕТИЧЕСКИЙ"
     if defect['severity'] == 'critical':
         c.setFillColorRGB(0.8, 0, 0)
     c.drawString(50, height - y_pos, f"Критичность: {severity_text}")
     c.setFillColorRGB(0, 0, 0)
     y_pos += 25
-    
+
     status_text = {
         'open': 'НЕ ИСПРАВЛЕН',
         'fixed': 'ИСПРАВЛЕН (ожидает проверки)',
         'closed': 'ЗАКРЫТ'
     }.get(defect['status'], defect['status'])
     c.drawString(50, height - y_pos, f"Статус: {status_text}")
-    
-    # ========== ПОДПИСИ ==========
-    # Три подписи: Прораб, Подрядчик, Покупатель
+
+    # ПОДПИСИ
     y_sign = 400
-    
-    # Линия для Прораба
     c.line(50, height - y_sign, 200, height - y_sign)
     c.drawString(60, height - y_sign - 20, "Прораб")
-    
-    # Линия для Подрядчика
+
     c.line(width - 200, height - y_sign, width - 50, height - y_sign)
     c.drawString(width - 190, height - y_sign - 20, "Представитель подрядчика")
-    
-    # Линия для Покупателя (посередине, ниже)
+
     y_sign2 = y_sign + 60
     c.line(50, height - y_sign2, width - 50, height - y_sign2)
     c.drawString(50, height - y_sign2 - 20, "Покупатель (дольщик)")
-    
-    # ========== ДАТА ==========
+
     c.setFont(font_name, 9)
-    c.drawString(50, height - 500, f"Акт сформирован: {datetime.now().strftime('%d.%m.%Y %H:%M')}")
-    
+    c.drawString(50, height - 520, f"Акт сформирован: {datetime.now().strftime('%d.%m.%Y %H:%M')}")
+
     c.save()
-    
+
     return send_file(filepath, as_attachment=True)
 
 @app.route('/report')
