@@ -21,18 +21,58 @@ os.makedirs(app.config['ACTS_FOLDER'], exist_ok=True)
 
 DB_PATH = 'database.sqlite'
 
-# ========== EMAIL НАСТРОЙКИ (ЗАМЕНИТЬ НА СВОИ) ==========
+# ========== EMAIL НАСТРОЙКИ ==========
 EMAIL_HOST = 'smtp.gmail.com'          
 EMAIL_PORT = 587
 EMAIL_USER = 'vika565455565455@gmail.com'     
 EMAIL_PASSWORD = 'dovl jibb qxsd nufv'          
 EMAIL_TO = 'vika565455565455@gmail.com'    
-# ================================================
+# =====================================
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+def upgrade_db():
+    """Автоматически добавляет новые колонки в существующую базу данных"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Проверяем, есть ли колонка 'street' в таблице 'flats'
+    cursor.execute("PRAGMA table_info(flats)")
+    columns = [column[1] for column in cursor.fetchall()]
+    
+    if 'street' not in columns:
+        print("🚀 Обновляю структуру базы данных...")
+        try:
+            cursor.execute('ALTER TABLE flats ADD COLUMN street TEXT')
+            cursor.execute('ALTER TABLE flats ADD COLUMN house TEXT')
+            conn.commit()
+            print("✅ База данных успешно обновлена! Добавлены колонки street и house")
+        except Exception as e:
+            print(f"❌ Ошибка при обновлении базы данных: {e}")
+    
+    # Проверяем, есть ли данные в таблице flats (если нет — создаём тестовые квартиры)
+    cursor.execute('SELECT COUNT(*) FROM flats')
+    count = cursor.fetchone()[0]
+    if count == 0:
+        print("🚀 Добавляю тестовые квартиры...")
+        test_flats = [
+            ('1', 'ул. Ленина', '12', 'Корпус 1', 1, 1, 'in_progress'),
+            ('2', 'ул. Ленина', '12', 'Корпус 1', 1, 1, 'in_progress'),
+            ('3', 'ул. Ленина', '12', 'Корпус 1', 1, 2, 'in_progress'),
+            ('5', 'ул. Гагарина', '5', 'Корпус 2', 1, 1, 'in_progress'),
+            ('10', 'ул. Гагарина', '5', 'Корпус 2', 2, 3, 'in_progress'),
+        ]
+        cursor.executemany('''
+            INSERT INTO flats (number, street, house, building, entrance, floor, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', test_flats)
+        conn.commit()
+        print("✅ Добавлено 5 тестовых квартир")
+    
+    conn.close()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
@@ -204,10 +244,8 @@ def reopen_defect(defect_id):
 def delete_defect(defect_id):
     conn = get_db()
     
-    # Сначала получаем путь к фото, чтобы удалить файл
     defect = conn.execute('SELECT photo_path FROM defects WHERE id = ?', (defect_id,)).fetchone()
     
-    # Удаляем фото с диска, если оно есть
     if defect and defect['photo_path']:
         try:
             if os.path.exists(defect['photo_path']):
@@ -215,7 +253,6 @@ def delete_defect(defect_id):
         except:
             pass
     
-    # Удаляем запись из базы данных
     conn.execute('DELETE FROM defects WHERE id = ?', (defect_id,))
     conn.commit()
     conn.close()
@@ -314,7 +351,6 @@ def generate_act(defect_id):
     }.get(defect['status'], defect['status'])
     c.drawString(50, height - y_pos, f"Статус: {status_text}")
 
-    # ПОДПИСИ
     y_sign = 400
     c.line(50, height - y_sign, 200, height - y_sign)
     c.drawString(60, height - y_sign - 20, "Прораб")
@@ -364,6 +400,10 @@ def report():
                           top_defects=top_defects,
                           total=total, 
                           closed=closed)
+
+# ========== ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ ПРИ ЗАПУСКЕ ==========
+# Вызываем обновление структуры БД перед запуском сервера
+upgrade_db()
 
 if __name__ == '__main__':
     print("\n🚀 Запуск сервера...")
