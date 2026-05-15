@@ -11,7 +11,7 @@
 
 <div class="row" id="flatsContainer">
     {% for flat in flats %}
-    <div class="col-md-4 mb-3 flat-card" data-search="{{ flat.street }} {{ flat.house }} {{ flat.entrance }} {{ flat.number }}">
+    <div class="col-md-4 mb-3 flat-card" data-search="{{ flat.number }}">
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">Квартира №{{ flat.number }}</h5>
