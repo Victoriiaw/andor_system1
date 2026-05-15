@@ -59,15 +59,15 @@ def upgrade_db():
     if count == 0:
         print("🚀 Добавляю тестовые квартиры...")
         test_flats = [
-            ('1', 'ул. Ленина', '12', 'Корпус 1', 1, 1, 'in_progress'),
-            ('2', 'ул. Ленина', '12', 'Корпус 1', 1, 1, 'in_progress'),
-            ('3', 'ул. Ленина', '12', 'Корпус 1', 1, 2, 'in_progress'),
-            ('5', 'ул. Гагарина', '5', 'Корпус 2', 1, 1, 'in_progress'),
-            ('10', 'ул. Гагарина', '5', 'Корпус 2', 2, 3, 'in_progress'),
+            ('1', 'ул. Ленина', '12', 1, 1, 'in_progress'),
+            ('2', 'ул. Ленина', '12', 1, 1, 'in_progress'),
+            ('3', 'ул. Ленина', '12', 1, 2, 'in_progress'),
+            ('5', 'ул. Гагарина', '5', 1, 1, 'in_progress'),
+            ('10', 'ул. Гагарина', '5', 2, 3, 'in_progress'),
         ]
         cursor.executemany('''
-            INSERT INTO flats (number, street, house, building, entrance, floor, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO flats (number, street, house, entrance, floor, status)
+            VALUES (?, ?, ?, ?, ?, ?)
         ''', test_flats)
         conn.commit()
         print("✅ Добавлено 5 тестовых квартир")
@@ -136,7 +136,7 @@ def index():
         FROM flats f
         LEFT JOIN defects d ON f.id = d.flat_id
         GROUP BY f.id
-        ORDER BY f.street, f.house, f.building, f.floor, f.number
+        ORDER BY f.street, f.house, f.floor, f.number
     ''').fetchall()
     conn.close()
     return render_template('index.html', flats=flats)
@@ -200,7 +200,7 @@ def add_defect():
 def defects():
     conn = get_db()
     all_defects = conn.execute('''
-        SELECT d.*, f.number as flat_number, f.street, f.house, f.building, 
+        SELECT d.*, f.number as flat_number, f.street, f.house, 
                s.code, s.category, s.description, s.severity
         FROM defects d
         JOIN flats f ON d.flat_id = f.id
@@ -279,7 +279,7 @@ def generate_act(defect_id):
 
     conn = get_db()
     defect = conn.execute('''
-        SELECT d.*, f.number as flat_number, f.street, f.house, f.building, f.entrance, f.floor,
+        SELECT d.*, f.number as flat_number, f.street, f.house, f.entrance, f.floor,
                s.code, s.category, s.description, s.severity
         FROM defects d
         JOIN flats f ON d.flat_id = f.id
@@ -306,7 +306,7 @@ def generate_act(defect_id):
 
     c.setFont(font_name, 11)
     c.drawString(50, height - 105, f"Квартира №{defect['flat_number']}")
-    c.drawString(50, height - 125, f"Адрес: {defect['street']}, д. {defect['house']}, {defect['building']}")
+    c.drawString(50, height - 125, f"Адрес: {defect['street']}, д. {defect['house']}")
     c.drawString(50, height - 145, f"Подъезд: {defect['entrance']}, Этаж: {defect['floor']}")
     c.drawString(50, height - 165, f"Дата осмотра: {defect['created_at']}")
 
