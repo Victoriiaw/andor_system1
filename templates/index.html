@@ -1,14 +1,24 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>📋 Список квартир для приемки</h2>
-<div class="row">
+
+<!-- ПОИСКОВАЯ СТРОКА -->
+<div class="card mb-4">
+    <div class="card-body">
+        <input type="text" id="searchInput" class="form-control" placeholder="🔍 Поиск по адресу (улица, дом, корпус) или номеру квартиры...">
+    </div>
+</div>
+
+<div class="row" id="flatsContainer">
     {% for flat in flats %}
-    <div class="col-md-4 mb-3">
+    <div class="col-md-4 mb-3 flat-card" data-search="{{ flat.street }} {{ flat.house }} {{ flat.building }} {{ flat.number }}">
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">Квартира №{{ flat.number }}</h5>
                 <p class="card-text">
-                    {{ flat.building }}, подъезд {{ flat.entrance }}, этаж {{ flat.floor }}<br>
+                    <strong>📍 Адрес:</strong><br>
+                    {{ flat.street }}, д. {{ flat.house }}, {{ flat.building }}<br>
+                    Подъезд: {{ flat.entrance }}, Этаж: {{ flat.floor }}<br>
                     <span class="badge bg-warning text-dark">Всего замечаний: {{ flat.defect_count or 0 }}</span>
                     <span class="badge bg-danger">Не закрыто: {{ flat.open_count or 0 }}</span>
                 </p>
@@ -18,4 +28,21 @@
     </div>
     {% endfor %}
 </div>
+
+<script>
+// Живой поиск
+document.getElementById('searchInput').addEventListener('keyup', function() {
+    let searchValue = this.value.toLowerCase();
+    let cards = document.querySelectorAll('.flat-card');
+    
+    cards.forEach(function(card) {
+        let searchText = card.getAttribute('data-search').toLowerCase();
+        if (searchText.includes(searchValue)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+});
+</script>
 {% endblock %}

@@ -96,7 +96,7 @@ def index():
         FROM flats f
         LEFT JOIN defects d ON f.id = d.flat_id
         GROUP BY f.id
-        ORDER BY f.building, f.floor, f.number
+        ORDER BY f.street, f.house, f.building, f.floor, f.number
     ''').fetchall()
     conn.close()
     return render_template('index.html', flats=flats)
@@ -160,7 +160,7 @@ def add_defect():
 def defects():
     conn = get_db()
     all_defects = conn.execute('''
-        SELECT d.*, f.number as flat_number, f.building, 
+        SELECT d.*, f.number as flat_number, f.street, f.house, f.building, 
                s.code, s.category, s.description, s.severity
         FROM defects d
         JOIN flats f ON d.flat_id = f.id
@@ -200,7 +200,6 @@ def reopen_defect(defect_id):
     conn.close()
     return redirect(url_for('defects'))
 
-# ========== НОВАЯ ФУНКЦИЯ УДАЛЕНИЯ ДЕФЕКТА ==========
 @app.route('/defect/<int:defect_id>/delete')
 def delete_defect(defect_id):
     conn = get_db()
@@ -214,7 +213,7 @@ def delete_defect(defect_id):
             if os.path.exists(defect['photo_path']):
                 os.remove(defect['photo_path'])
         except:
-            pass  # Файла нет или ошибка — игнорируем
+            pass
     
     # Удаляем запись из базы данных
     conn.execute('DELETE FROM defects WHERE id = ?', (defect_id,))
@@ -222,7 +221,6 @@ def delete_defect(defect_id):
     conn.close()
     
     return redirect(url_for('defects'))
-# ===================================================
 
 @app.route('/generate_act/<int:defect_id>')
 def generate_act(defect_id):
@@ -244,7 +242,7 @@ def generate_act(defect_id):
 
     conn = get_db()
     defect = conn.execute('''
-        SELECT d.*, f.number as flat_number, f.building, f.entrance, f.floor,
+        SELECT d.*, f.number as flat_number, f.street, f.house, f.building, f.entrance, f.floor,
                s.code, s.category, s.description, s.severity
         FROM defects d
         JOIN flats f ON d.flat_id = f.id
@@ -271,7 +269,7 @@ def generate_act(defect_id):
 
     c.setFont(font_name, 11)
     c.drawString(50, height - 105, f"Квартира №{defect['flat_number']}")
-    c.drawString(50, height - 125, f"Корпус: {defect['building']}")
+    c.drawString(50, height - 125, f"Адрес: {defect['street']}, д. {defect['house']}, {defect['building']}")
     c.drawString(50, height - 145, f"Подъезд: {defect['entrance']}, Этаж: {defect['floor']}")
     c.drawString(50, height - 165, f"Дата осмотра: {defect['created_at']}")
 

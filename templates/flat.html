@@ -19,7 +19,7 @@
                             {% for defect in snip_defects %}
                             <option value="{{ defect.id }}">
                                 [{{ defect.code }}] {{ defect.category }}: {{ defect.description[:60] }}
-                                {% if defect.severity == 'critical' %}⚠️ КРИТИЧНО{% endif %}
+                                {% if defect.severity == 'critical' %}КРИТИЧНО{% endif %}
                             </option>
                             {% endfor %}
                         </select>
@@ -30,16 +30,17 @@
                             <label class="form-label">📍 Комната / помещение:</label>
                             <select name="room" class="form-select" required>
                                 <option value="">-- Выберите --</option>
-                                <option value="прихожая">🚪 Прихожая</option>
-                                <option value="гостиная">🛋️ Гостиная</option>
-                                <option value="спальня 1">🛏️ Спальня 1</option>
-                                <option value="спальня 2">🛏️ Спальня 2</option>
-                                <option value="кухня">🍳 Кухня</option>
-                                <option value="санузел 1">🚽 Санузел 1</option>
-                                <option value="санузел 2">🚿 Санузел 2</option>
-                                <option value="балкон">🌞 Балкон/лоджия</option>
-                                <option value="коридор">📏 Коридор</option>
-                                <option value="кладовая">📦 Кладовая</option>
+                                <option value="прихожая">Прихожая</option>
+                                <option value="гостиная">Гостиная</option>
+                                <option value="спальня 1">Спальня 1</option>
+                                <option value="спальня 2">Спальня 2</option>
+                                <option value="спальня 2">Спальня 3</option>
+                                <option value="кухня">Кухня</option>
+                                <option value="санузел 1">Санузел 1</option>
+                                <option value="санузел 2">Санузел 2</option>
+                                <option value="балкон">Балкон/лоджия</option>
+                                <option value="коридор">Коридор</option>
+                                <option value="кладовая">Кладовая</option>
                             </select>
                         </div>
                         <div class="col-md-6">
