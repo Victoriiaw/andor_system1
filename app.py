@@ -113,19 +113,17 @@ def send_email_notification(flat_number, room, location_detail, defect_code, def
 📋 ДЕТАЛИ ЗАЯВКИ:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🏠 Квартира: №{flat_number}
-📍 Помещение: {room if room else 'не указано'}
-📌 Точное место: {location_detail if location_detail else 'не указано'}
+Квартира: №{flat_number}
+Помещение: {room if room else 'не указано'}
+Точное место: {location_detail if location_detail else 'не указано'}
 
-📄 Нормативный документ: {defect_code}
-📝 Описание дефекта: {defect_description}
+Нормативный документ: {defect_code}
+Описание дефекта: {defect_description}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Для просмотра всех заявок и управления перейдите по ссылке:
-👉 http://127.0.0.1:5000/defects
-
-{chr(10)}Если вы работаете с телефона в той же сети, используйте IP-адрес компьютера.
+https://andor-system1.onrender.com/
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 С уважением,
@@ -156,7 +154,7 @@ def index():
         FROM flats f
         LEFT JOIN defects d ON f.id = d.flat_id
         GROUP BY f.id
-        ORDER BY f.street, f.house, f.floor, f.number
+        ORDER BY CAST(f.number AS INTEGER)
     ''').fetchall()
     conn.close()
     return render_template('index.html', flats=flats)
