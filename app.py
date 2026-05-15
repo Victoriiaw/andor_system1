@@ -34,6 +34,36 @@ def get_db():
     conn.row_factory = sqlite3.Row
     return conn
 
+def fix_existing_addresses():
+    """Заполняет пустые адреса для существующих квартир"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT id FROM flats WHERE street IS NULL OR street = ''")
+    flats_to_fix = cursor.fetchall()
+    
+    if flats_to_fix:
+        print(f"🔧 Найдено {len(flats_to_fix)} квартир без адреса. Заполняю...")
+        
+        for flat in flats_to_fix:
+            flat_id = flat[0]
+            if flat_id <= 3:
+                street = 'ул. Ленина'
+                house = '12'
+            elif flat_id == 5 or flat_id == 10:
+                street = 'ул. Гагарина'
+                house = '5'
+            else:
+                street = 'ул. Строителей'
+                house = '1'
+            
+            cursor.execute('UPDATE flats SET street = ?, house = ? WHERE id = ?', (street, house, flat_id))
+        
+        conn.commit()
+        print("✅ Адреса успешно заполнены!")
+    
+    conn.close()
+
 def upgrade_db():
     """Автоматически добавляет новые колонки в существующую базу данных"""
     conn = get_db()
@@ -53,24 +83,14 @@ def upgrade_db():
         except Exception as e:
             print(f"❌ Ошибка при обновлении базы данных: {e}")
     
-    # Проверяем, есть ли данные в таблице flats (если нет — создаём тестовые квартиры)
+    # Заполняем пустые адреса (если есть старые квартиры)
+    fix_existing_addresses()
+    
+    # Проверяем, есть ли данные в таблице flats
     cursor.execute('SELECT COUNT(*) FROM flats')
     count = cursor.fetchone()[0]
     if count == 0:
-        print("🚀 Добавляю тестовые квартиры...")
-        test_flats = [
-            ('1', 'ул. Ленина', '12', 1, 1, 'in_progress'),
-            ('2', 'ул. Ленина', '12', 1, 1, 'in_progress'),
-            ('3', 'ул. Ленина', '12', 1, 2, 'in_progress'),
-            ('5', 'ул. Гагарина', '5', 1, 1, 'in_progress'),
-            ('10', 'ул. Гагарина', '5', 2, 3, 'in_progress'),
-        ]
-        cursor.executemany('''
-            INSERT INTO flats (number, street, house, entrance, floor, status)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', test_flats)
-        conn.commit()
-        print("✅ Добавлено 5 тестовых квартир")
+        print("⚠️ База данных пуста. Добавьте квартиры вручную через SQL или DB Browser.")
     
     conn.close()
 
@@ -402,7 +422,6 @@ def report():
                           closed=closed)
 
 # ========== ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ ПРИ ЗАПУСКЕ ==========
-# Вызываем обновление структуры БД перед запуском сервера
 upgrade_db()
 
 if __name__ == '__main__':
