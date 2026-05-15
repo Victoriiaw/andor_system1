@@ -148,16 +148,59 @@ https://andor-system1.onrender.com/
 @app.route('/')
 def index():
     conn = get_db()
+    
+    # Данные для статистики
+    stats = {}
+    stats['total'] = conn.execute('SELECT COUNT(*) FROM flats').fetchone()[0]
+    stats['accepted'] = conn.execute('SELECT COUNT(*) FROM flats WHERE status = "accepted"').fetchone()[0]
+    
+    # Квартиры с открытыми недочетами
+    result = conn.execute('SELECT COUNT(DISTINCT flat_id) FROM defects WHERE status != "closed"').fetchone()[0]
+    stats['has_defects'] = result if result else 0
+    
+    # Квартиры готовые к приёмке (все недочеты закрыты, но статус не accepted)
+    result = conn.execute('''
+        SELECT COUNT(*) FROM flats f 
+        WHERE f.status != 'accepted' 
+        AND (SELECT COUNT(*) FROM defects d WHERE d.flat_id = f.id AND d.status != 'closed') = 0
+        AND (SELECT COUNT(*) FROM defects d WHERE d.flat_id = f.id) > 0
+    ''').fetchone()[0]
+    stats['ready_for_acceptance'] = result if result else 0
+    
+    # Список квартир
     flats = conn.execute('''
         SELECT f.*, COUNT(d.id) as defect_count,
                SUM(CASE WHEN d.status = 'open' THEN 1 ELSE 0 END) as open_count
         FROM flats f
         LEFT JOIN defects d ON f.id = d.flat_id
         GROUP BY f.id
-        ORDER BY CAST(f.number AS INTEGER)
+        ORDER BY 
+            CASE 
+                WHEN f.status = 'accepted' THEN 4
+                WHEN COUNT(d.id) = 0 OR COUNT(d.id) IS NULL THEN 3
+                WHEN SUM(CASE WHEN d.status = 'open' THEN 1 ELSE 0 END) = 0 AND COUNT(d.id) > 0 THEN 2
+                ELSE 1
+            END,
+            CAST(f.number AS INTEGER)
     ''').fetchall()
     conn.close()
-    return render_template('index.html', flats=flats)
+    
+    return render_template('index.html', flats=flats, stats=stats)
+
+@app.route('/accept_flat/<int:flat_id>')
+def accept_flat(flat_id):
+    conn = get_db()
+    # Проверяем, есть ли открытые недочеты
+    open_defects = conn.execute('SELECT COUNT(*) FROM defects WHERE flat_id = ? AND status != "closed"', (flat_id,)).fetchone()[0]
+    
+    if open_defects == 0:
+        conn.execute('UPDATE flats SET status = "accepted" WHERE id = ?', (flat_id,))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('index'))
+    else:
+        conn.close()
+        return "Невозможно принять квартиру: есть незакрытые недочеты", 400
 
 @app.route('/flat/<int:flat_id>')
 def flat(flat_id):

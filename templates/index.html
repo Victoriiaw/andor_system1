@@ -2,10 +2,46 @@
 {% block content %}
 <h2>📋 Список квартир для приемки</h2>
 
+<!-- БЛОК СТАТИСТИКИ -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body text-center">
+                <h1 class="display-4">{{ stats.total }}</h1>
+                <p class="mb-0">Всего квартир</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body text-center">
+                <h1 class="display-4">{{ stats.has_defects }}</h1>
+                <p class="mb-0">⚠️ Есть недочеты</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body text-center">
+                <h1 class="display-4">{{ stats.ready_for_acceptance }}</h1>
+                <p class="mb-0">🔄 Готово к приёмке</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body text-center">
+                <h1 class="display-4">{{ stats.accepted }}</h1>
+                <p class="mb-0">✅ Принято</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ПОИСКОВАЯ СТРОКА -->
 <div class="card mb-4">
     <div class="card-body">
-        <input type="text" id="searchInput" class="form-control" placeholder="🔍 Поиск по адресу (улица, дом, подъезд) или номеру квартиры...">
+        <input type="text" id="searchInput" class="form-control" placeholder="🔍 Поиск по номеру квартиры...">
     </div>
 </div>
 
@@ -14,13 +50,29 @@
     <div class="col-md-4 mb-3 flat-card" data-search="{{ flat.number }}">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Квартира №{{ flat.number }}</h5>
+                <h5 class="card-title">
+                    Квартира №{{ flat.number }}
+                    {% if flat.status == 'accepted' %}
+                        <span class="badge bg-success">✅ Принята</span>
+                    {% elif flat.open_count == 0 and flat.defect_count > 0 %}
+                        <span class="badge bg-warning text-dark">🔄 Готово к приёмке</span>
+                    {% elif flat.open_count > 0 %}
+                        <span class="badge bg-danger">⚠️ Есть недочеты</span>
+                    {% else %}
+                        <span class="badge bg-secondary">📋 Нет недочетов</span>
+                    {% endif %}
+                </h5>
                 <p class="card-text">
                     📍 {{ flat.street }}, д. {{ flat.house }}, подъезд {{ flat.entrance }}, этаж {{ flat.floor }}<br>
                     <span class="badge bg-warning text-dark">Всего замечаний: {{ flat.defect_count or 0 }}</span>
                     <span class="badge bg-danger">Не закрыто: {{ flat.open_count or 0 }}</span>
                 </p>
-                <a href="/flat/{{ flat.id }}" class="btn btn-primary">Осмотреть квартиру</a>
+                <div class="btn-group w-100">
+                    <a href="/flat/{{ flat.id }}" class="btn btn-primary">🔍 Осмотреть квартиру</a>
+                    {% if flat.status != 'accepted' and (flat.open_count == 0 or flat.defect_count == 0) %}
+                        <a href="/accept_flat/{{ flat.id }}" class="btn btn-success" onclick="return confirm('Принять квартиру?')">✅ Принять</a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -28,7 +80,7 @@
 </div>
 
 <script>
-// Живой поиск
+// Живой поиск по номеру квартиры
 document.getElementById('searchInput').addEventListener('keyup', function() {
     let searchValue = this.value.toLowerCase();
     let cards = document.querySelectorAll('.flat-card');
