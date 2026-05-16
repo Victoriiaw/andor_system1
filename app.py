@@ -10,6 +10,8 @@ import uuid
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import base64
+import requests
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads/'
@@ -21,6 +23,12 @@ os.makedirs(app.config['ACTS_FOLDER'], exist_ok=True)
 
 DB_PATH = 'database.sqlite'
 
+# ========== GitHub НАСТРОЙКИ (замени на свои) ==========
+GITHUB_REPO = "Victoriiaw/andor_system1"  # твой репозиторий
+GITHUB_BRANCH = "main"
+GITHUB_DB_PATH = "database.sqlite"
+# =====================================================
+
 # ========== EMAIL НАСТРОЙКИ ==========
 EMAIL_HOST = 'smtp.gmail.com'          
 EMAIL_PORT = 587
@@ -28,6 +36,78 @@ EMAIL_USER = 'vika565455565455@gmail.com'
 EMAIL_PASSWORD = 'dovl jibb qxsd nufv'          
 EMAIL_TO = 'vika565455565455@gmail.com'    
 # =====================================
+
+def backup_db_to_github():
+    """Отправляет копию базы данных в GitHub"""
+    if not os.path.exists(DB_PATH):
+        return
+    
+    token = os.environ.get('GITHUB_TOKEN')
+    if not token:
+        print("⚠️ GITHUB_TOKEN не настроен")
+        return
+    
+    try:
+        # Читаем файл БД
+        with open(DB_PATH, 'rb') as f:
+            content = base64.b64encode(f.read()).decode('utf-8')
+        
+        # Получаем текущий SHA файла (если есть)
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_DB_PATH}"
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        response = requests.get(url, headers=headers)
+        sha = response.json().get('sha') if response.status_code == 200 else None
+        
+        # Отправляем файл
+        data = {
+            "message": f"Auto backup database {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            "content": content,
+            "branch": GITHUB_BRANCH
+        }
+        if sha:
+            data["sha"] = sha
+        
+        response = requests.put(url, headers=headers, json=data)
+        if response.status_code in [200, 201]:
+            print("✅ База данных сохранена в GitHub")
+        else:
+            print(f"❌ Ошибка бэкапа: {response.status_code}")
+    except Exception as e:
+        print(f"❌ Ошибка бэкапа: {e}")
+
+def restore_db_from_github():
+    """Восстанавливает базу данных из GitHub при запуске"""
+    token = os.environ.get('GITHUB_TOKEN')
+    if not token:
+        print("⚠️ GITHUB_TOKEN не настроен, создаю новую БД")
+        return
+    
+    try:
+        url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_DB_PATH}"
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        
+        response = requests.get(url, headers=headers)
+        
+        if response.status_code == 200:
+            content = response.json().get('content', '')
+            if content:
+                db_content = base64.b64decode(content)
+                with open(DB_PATH, 'wb') as f:
+                    f.write(db_content)
+                print("✅ База данных восстановлена из GitHub")
+            else:
+                print("⚠️ GitHub: файл пуст, создаю новую БД")
+        else:
+            print("⚠️ GitHub: база данных не найдена, создаю новую")
+    except Exception as e:
+        print(f"⚠️ Ошибка восстановления: {e}, создаю новую БД")
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -69,7 +149,6 @@ def upgrade_db():
     conn = get_db()
     cursor = conn.cursor()
     
-    # Проверяем, есть ли колонка 'street' в таблице 'flats'
     cursor.execute("PRAGMA table_info(flats)")
     columns = [column[1] for column in cursor.fetchall()]
     
@@ -83,10 +162,8 @@ def upgrade_db():
         except Exception as e:
             print(f"❌ Ошибка при обновлении базы данных: {e}")
     
-    # Заполняем пустые адреса (если есть старые квартиры)
     fix_existing_addresses()
     
-    # Проверяем, есть ли данные в таблице flats
     cursor.execute('SELECT COUNT(*) FROM flats')
     count = cursor.fetchone()[0]
     if count == 0:
@@ -149,16 +226,13 @@ https://andor-system1.onrender.com/
 def index():
     conn = get_db()
     
-    # Данные для статистики
     stats = {}
     stats['total'] = conn.execute('SELECT COUNT(*) FROM flats').fetchone()[0]
     stats['accepted'] = conn.execute('SELECT COUNT(*) FROM flats WHERE status = "accepted"').fetchone()[0]
     
-    # Квартиры с открытыми недочетами
     result = conn.execute('SELECT COUNT(DISTINCT flat_id) FROM defects WHERE status != "closed"').fetchone()[0]
     stats['has_defects'] = result if result else 0
     
-    # Квартиры готовые к приёмке (все недочеты закрыты, но статус не accepted)
     result = conn.execute('''
         SELECT COUNT(*) FROM flats f 
         WHERE f.status != 'accepted' 
@@ -167,7 +241,6 @@ def index():
     ''').fetchone()[0]
     stats['ready_for_acceptance'] = result if result else 0
     
-    # Список квартир
     flats = conn.execute('''
         SELECT f.*, COUNT(d.id) as defect_count,
                SUM(CASE WHEN d.status = 'open' THEN 1 ELSE 0 END) as open_count
@@ -190,13 +263,13 @@ def index():
 @app.route('/accept_flat/<int:flat_id>')
 def accept_flat(flat_id):
     conn = get_db()
-    # Проверяем, есть ли открытые недочеты
     open_defects = conn.execute('SELECT COUNT(*) FROM defects WHERE flat_id = ? AND status != "closed"', (flat_id,)).fetchone()[0]
     
     if open_defects == 0:
         conn.execute('UPDATE flats SET status = "accepted" WHERE id = ?', (flat_id,))
         conn.commit()
         conn.close()
+        backup_db_to_github()
         return redirect(url_for('index'))
     else:
         conn.close()
@@ -240,12 +313,10 @@ def add_defect():
     ''', (flat_id, snip_defect_id, room, location_detail, comment, photo_path, datetime.now()))
     conn.commit()
     
-    # Получаем информацию о дефекте для email
     snip_info = conn.execute('SELECT code, description FROM snip_defects WHERE id = ?', (snip_defect_id,)).fetchone()
     flat_info = conn.execute('SELECT number FROM flats WHERE id = ?', (flat_id,)).fetchone()
     conn.close()
     
-    # Отправляем email уведомление
     if snip_info and flat_info:
         send_email_notification(
             flat_number=flat_info['number'],
@@ -255,6 +326,7 @@ def add_defect():
             defect_description=snip_info['description']
         )
     
+    backup_db_to_github()
     return redirect(url_for('flat', flat_id=flat_id))
 
 @app.route('/defects')
@@ -283,6 +355,7 @@ def fix_defect(defect_id):
     conn.execute('UPDATE defects SET status = "fixed", fixed_at = ? WHERE id = ?', (datetime.now(), defect_id))
     conn.commit()
     conn.close()
+    backup_db_to_github()
     return redirect(url_for('defects'))
 
 @app.route('/defect/<int:defect_id>/close')
@@ -291,6 +364,7 @@ def close_defect(defect_id):
     conn.execute('UPDATE defects SET status = "closed" WHERE id = ?', (defect_id,))
     conn.commit()
     conn.close()
+    backup_db_to_github()
     return redirect(url_for('defects'))
 
 @app.route('/defect/<int:defect_id>/reopen')
@@ -299,12 +373,12 @@ def reopen_defect(defect_id):
     conn.execute('UPDATE defects SET status = "open" WHERE id = ?', (defect_id,))
     conn.commit()
     conn.close()
+    backup_db_to_github()
     return redirect(url_for('defects'))
 
 @app.route('/defect/<int:defect_id>/delete')
 def delete_defect(defect_id):
     conn = get_db()
-    
     defect = conn.execute('SELECT photo_path FROM defects WHERE id = ?', (defect_id,)).fetchone()
     
     if defect and defect['photo_path']:
@@ -317,7 +391,7 @@ def delete_defect(defect_id):
     conn.execute('DELETE FROM defects WHERE id = ?', (defect_id,))
     conn.commit()
     conn.close()
-    
+    backup_db_to_github()
     return redirect(url_for('defects'))
 
 @app.route('/generate_act/<int:defect_id>')
@@ -329,7 +403,6 @@ def generate_act(defect_id):
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
 
-    # Регистрируем шрифт из папки проекта
     font_path = os.path.join(os.path.dirname(__file__), 'ofont.ru_Arial.ttf')
     try:
         pdfmetrics.registerFont(TTFont('Arial', font_path))
@@ -361,10 +434,8 @@ def generate_act(defect_id):
 
     c.setFont(font_name, 16)
     c.drawString(50, height - 50, "АКТ ОСМОТРА КВАРТИРЫ")
-
     c.setFont(font_name, 12)
     c.drawString(50, height - 80, "ООО СЗ «Андор»")
-
     c.setFont(font_name, 11)
     c.drawString(50, height - 105, f"Квартира №{defect['flat_number']}")
     c.drawString(50, height - 125, f"Адрес: {defect['street']}, д. {defect['house']}")
@@ -372,10 +443,8 @@ def generate_act(defect_id):
     c.drawString(50, height - 165, f"Дата осмотра: {defect['created_at']}")
 
     c.line(50, height - 185, width - 50, height - 185)
-
     c.setFont(font_name, 14)
     c.drawString(50, height - 215, "ВЫЯВЛЕННЫЙ ДЕФЕКТ")
-
     c.setFont(font_name, 11)
     c.drawString(50, height - 240, f"Нормативный документ: {defect['code']}")
     c.drawString(50, height - 260, f"Категория: {defect['category']}")
@@ -415,17 +484,14 @@ def generate_act(defect_id):
     y_sign = 400
     c.line(50, height - y_sign, 200, height - y_sign)
     c.drawString(60, height - y_sign - 20, "Прораб")
-
     c.line(width - 200, height - y_sign, width - 50, height - y_sign)
     c.drawString(width - 190, height - y_sign - 20, "Представитель подрядчика")
-
     y_sign2 = y_sign + 60
     c.line(50, height - y_sign2, width - 50, height - y_sign2)
     c.drawString(50, height - y_sign2 - 20, "Покупатель (дольщик)")
 
     c.setFont(font_name, 9)
     c.drawString(50, height - 520, f"Акт сформирован: {datetime.now().strftime('%d.%m.%Y %H:%M')}")
-
     c.save()
 
     return send_file(filepath, as_attachment=True)
@@ -462,7 +528,8 @@ def report():
                           total=total, 
                           closed=closed)
 
-# ========== ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ ПРИ ЗАПУСКЕ ==========
+# ========== ЗАПУСК И ВОССТАНОВЛЕНИЕ БД ==========
+restore_db_from_github()
 upgrade_db()
 
 if __name__ == '__main__':
