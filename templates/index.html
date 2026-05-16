@@ -3,37 +3,29 @@
 <h2>📋 Список квартир для приемки</h2>
 
 <!-- БЛОК СТАТИСТИКИ -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card text-white bg-primary">
-            <div class="card-body text-center">
-                <h1 class="display-4">{{ stats.total }}</h1>
-                <p class="mb-0">Всего квартир</p>
-            </div>
+<div class="row mb-4 g-3">
+    <div class="col-md-3 col-6">
+        <div class="stat-card card text-center p-3" style="background: #f1f2f5;">
+            <div class="stat-number" style="color: #6b7280;">{{ stats.total }}</div>
+            <div class="stat-label text-muted">Всего квартир</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-warning">
-            <div class="card-body text-center">
-                <h1 class="display-4">{{ stats.has_defects }}</h1>
-                <p class="mb-0">⚠️ Есть недочеты</p>
-            </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card card text-center p-3" style="background: #fef3c7;">
+            <div class="stat-number" style="color: #f8aa50;">{{ stats.has_defects }}</div>
+            <div class="stat-label text-muted">Есть недочеты</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-info">
-            <div class="card-body text-center">
-                <h1 class="display-4">{{ stats.ready_for_acceptance }}</h1>
-                <p class="mb-0">🔄 Готово к приёмке</p>
-            </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card card text-center p-3" style="background: #e0e7ff;">
+            <div class="stat-number" style="color: #70b3ff;">{{ stats.ready_for_acceptance }}</div>
+            <div class="stat-label text-muted">Готово к приёмке</div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-white bg-success">
-            <div class="card-body text-center">
-                <h1 class="display-4">{{ stats.accepted }}</h1>
-                <p class="mb-0">✅ Принято</p>
-            </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card card text-center p-3" style="background: #d1fae5;">
+            <div class="stat-number" style="color: #41cf88;">{{ stats.accepted }}</div>
+            <div class="stat-label text-muted">Принято</div>
         </div>
     </div>
 </div>
@@ -53,14 +45,14 @@
                 <h5 class="card-title">
                     Квартира №{{ flat.number }}
                     {% if flat.status == 'accepted' %}
-                        <span class="badge bg-success">✅ Принята</span>
-                    {% elif flat.open_count == 0 and flat.defect_count > 0 %}
-                        <span class="badge bg-warning text-dark">🔄 Готово к приёмке</span>
-                    {% elif flat.open_count > 0 %}
-                        <span class="badge bg-danger">⚠️ Есть недочеты</span>
-                    {% else %}
-                        <span class="badge bg-secondary">📋 Нет недочетов</span>
-                    {% endif %}
+    <span class="badge" style="background: #d1fae5; color: #41cf88;">Принята</span>
+{% elif flat.open_count == 0 and flat.defect_count > 0 %}
+    <span class="badge" style="background: #e0e7ff; color: #70b3ff;">Готово к приёмке</span>
+{% elif flat.open_count > 0 %}
+    <span class="badge" style="background: #fef3c7; color: #f8aa50;">Есть недочеты</span>
+{% else %}
+    <span class="badge" style="background: #f3f4f6; color: #6b7280;">Нет недочетов</span>
+{% endif %}
                 </h5>
                 <p class="card-text">
                     📍 {{ flat.street }}, д. {{ flat.house }}, подъезд {{ flat.entrance }}, этаж {{ flat.floor }}<br>
