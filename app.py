@@ -230,7 +230,8 @@ def index():
     stats['total'] = conn.execute('SELECT COUNT(*) FROM flats').fetchone()[0]
     stats['accepted'] = conn.execute('SELECT COUNT(*) FROM flats WHERE status = "accepted"').fetchone()[0]
     
-    result = conn.execute('SELECT COUNT(DISTINCT flat_id) FROM defects WHERE status != "closed"').fetchone()[0]
+        # Квартиры с открытыми недочетами (status = 'open')
+    result = conn.execute('SELECT COUNT(DISTINCT flat_id) FROM defects WHERE status = "open"').fetchone()[0]
     stats['has_defects'] = result if result else 0
     
     result = conn.execute('''
